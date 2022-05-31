@@ -42,6 +42,8 @@ public class Drawing implements INBTSerializable<CompoundTag> {
 
     public void finish() {
         Validate.isTrue(valid());
+        Point2D.Double start = getPoints().get(0);
+        points = points.stream().map(p -> new Point2D.Double(p.getX() - start.getX(), p.getY() - start.getY())).collect(Collectors.toList());
         double top = getPoints().stream()
                 .min(Comparator.comparing(Point2D.Double::getY))
                 .map(Point2D.Double::getY)
@@ -58,12 +60,8 @@ public class Drawing implements INBTSerializable<CompoundTag> {
                 .max(Comparator.comparing(Point2D.Double::getX))
                 .map(Point2D.Double::getX)
                 .get();
-        Point2D.Double start = getPoints().get(0);
-        // TODO does this work?
-        points = points.stream().map(p -> new Point2D.Double(p.getX() - start.getX(), p.getY() - start.getY())).collect(Collectors.toList());
         double wh = Math.max(bottom - top, right - left);
         points = points.stream()
-                .map(p -> new Point2D.Double(p.getX() - left, p.getY() - top))
                 .map(p -> new Point2D.Double(p.getX() / wh, p.getY() / wh))
                 .collect(Collectors.toList());
         createImage();
@@ -74,14 +72,19 @@ public class Drawing implements INBTSerializable<CompoundTag> {
         final int wh = 120;
         BufferedImage image = new BufferedImage(wh + 20, wh + 20, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = (Graphics2D) image.getGraphics();
-        graphics.setColor(Color.CYAN);
+        graphics.setColor(Color.YELLOW);
+        double minX = Math.abs(getPoints().stream().mapToDouble(Point2D.Double::getX).min().getAsDouble());
+        double minY = Math.abs(getPoints().stream().mapToDouble(Point2D.Double::getY).min().getAsDouble());
         for (Point2D.Double point : getPoints()) {
-            graphics.fillRect((int) (point.getX() * wh) - 2 + 10, (int) (point.getY() * wh) - 2 + 10, 4, 4);
+            graphics.fillRect(
+                    (int) ((point.getX() + minX) * wh) - 2 + 10,
+                    (int) ((point.getY() + minY) * wh) - 2 + 10,
+                    4, 4);
         }
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             ImageIO.write(image, "png", baos);
-            //ImageIO.write(image, "png", new File("/home/gaus/", "pussy" + System.currentTimeMillis() + ".png"));
+            //ImageIO.write(image, "png", new File("/home/gaus/Bilder/", "lolcat" + System.currentTimeMillis() + ".png"));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -102,10 +105,12 @@ public class Drawing implements INBTSerializable<CompoundTag> {
 
         }*/
         //reverse list when comparing
-        return comparePoints(thisPoints.subList(0, minLength), otherPoints.subList(0, minLength));
+        //return comparePoints(thisPoints.subList(0, minLength), otherPoints.subList(0, minLength));
+        return comparePoints(thisPoints, otherPoints);
     }
 
     private double comparePoints(List<Point2D.Double> l1, List<Point2D.Double> l2) {
+        if (true) return new LevenshteinDistance(2).calculateDistance(l1, l2);
         Validate.isTrue(l1.size() == l2.size());
         double res = 1;
         for (int i = 0; i < l1.size(); i++) {

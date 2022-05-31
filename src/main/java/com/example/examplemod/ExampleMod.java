@@ -29,44 +29,16 @@ public class ExampleMod {
         MinecraftForge.EVENT_BUS.register(this);
     }
 
-    private boolean down = false;
-
-    //@SubscribeEvent
-    public void keydown(InputEvent.KeyInputEvent event) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (GLFW.GLFW_KEY_LEFT_CONTROL == event.getKey()) {
-            if (GLFW.GLFW_PRESS == event.getAction()) {
-                down = true;
-                minecraft.mouseHandler.releaseMouse();
-            } else if (GLFW.GLFW_RELEASE == event.getAction()) {
-                down = false;
-                minecraft.mouseHandler.grabMouse();
-            }
-        }
-    }
 
     @SubscribeEvent
     public void key(InputEvent.KeyInputEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (GLFW.GLFW_KEY_B == event.getKey()) {
-            minecraft.setScreen(new DrawScreen());
+            minecraft.setScreen(new DrawScreen(false));
         }
     }
-
-    @SubscribeEvent
-    public void tick(TickEvent.PlayerTickEvent event) {
-        if (down) {
-            if (event.player.tickCount % 20 == 0) {
-                System.out.println(Minecraft.getInstance().mouseHandler.xpos());
-            }
-        }
-    }
-
 
     private void setup(final FMLCommonSetupEvent event) {
-        // some preinit code
-        LOGGER.info("HELLO FROM PREINIT");
-        LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.getRegistryName());
         PacketHandler.init();
     }
 

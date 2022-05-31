@@ -1,7 +1,5 @@
 package com.example.examplemod;
 
-import com.google.gson.GsonBuilder;
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.Util;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.TextComponent;
@@ -14,9 +12,11 @@ import java.awt.geom.Point2D;
 public class DrawScreen extends Screen {
     private Drawing drawing = null;
     private Drawing savedDrawing = null;
+    private final boolean createMode;
 
-    protected DrawScreen() {
+    protected DrawScreen(boolean createMode) {
         super(new TextComponent("toll"));
+        this.createMode = createMode;
     }
 
     @Override
@@ -28,6 +28,7 @@ public class DrawScreen extends Screen {
     @Override
     public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTicks) {
         super.render(poseStack, mouseX, mouseY, partialTicks);
+        //TODO draw grid
         if (drawing != null) {
             for (Point2D.Double point : drawing.getPoints()) {
                 GuiUtils.drawGradientRect(poseStack.last().pose(), -1, (int) (point.getX() - 2), (int) (point.getY() - 2), (int) (point.getX() + 2), (int) (point.getY() + 2), Color.YELLOW.getRGB(), Color.YELLOW.getRGB());
@@ -52,13 +53,18 @@ public class DrawScreen extends Screen {
             drawing.addPoint(mouseX, mouseY);
             if (drawing.valid()) {
                 drawing.finish();
+                if (createMode) {
+                    //TODO persist drawing
+                } else {
+                    //TODO check for match
+                }
                 if (savedDrawing == null) {
                     savedDrawing = drawing;
                 } else {
                     System.out.println("score: " + drawing.compare(savedDrawing));
                 }
-                System.out.println(new GsonBuilder().setPrettyPrinting().create().toJson(drawing));
-                PacketHandler.INSTANCE.sendToServer(new PacketHandler.M(PacketHandler.M.Action.CREATE_DRAW, "ga", drawing));
+                //System.out.println(new GsonBuilder().setPrettyPrinting().create().toJson(drawing));
+                //PacketHandler.INSTANCE.sendToServer(new PacketHandler.M(PacketHandler.M.Action.CREATE_DRAW, "ga", drawing));
             } else {
                 getMinecraft().player.sendMessage(new TextComponent("Invlaid Draw"), Util.NIL_UUID);
             }
@@ -74,4 +80,8 @@ public class DrawScreen extends Screen {
         }
     }
 
+    @Override
+    public void tick() {
+        //TODO if certain key is not pressed, close window
+    }
 }
