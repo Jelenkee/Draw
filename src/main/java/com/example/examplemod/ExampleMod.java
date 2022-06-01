@@ -2,10 +2,9 @@ package com.example.examplemod;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.client.event.InputEvent;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -38,6 +37,14 @@ public class ExampleMod {
         }
     }
 
+    @SubscribeEvent
+    public void render(RenderGameOverlayEvent.Pre event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen instanceof DrawScreen && RenderGameOverlayEvent.ElementType.ALL == event.getType()) {
+            //event.setCanceled(true);
+        }
+    }
+
     private void setup(final FMLCommonSetupEvent event) {
         PacketHandler.init();
     }
@@ -45,6 +52,9 @@ public class ExampleMod {
     /*ideas
     - click block
     - wirte chatmessage
+    - swap items
+    - combine multiple steps
+    - crafting menu
      */
 
 }

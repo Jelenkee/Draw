@@ -7,18 +7,14 @@ import java.util.List;
 public class LevenshteinDistance {
     private final int insertionCost;
     private final int deletionCost;
-    private final int substitutionCost;
-    private final double diagonal;
 
-    public LevenshteinDistance(double diagonal) {
-        this(1, 1, 1, diagonal);
+    public LevenshteinDistance() {
+        this(1, 1);
     }
 
-    public LevenshteinDistance(int insertionCost, int deletionCost, int substitutionCost, double diagonal) {
+    public LevenshteinDistance(int insertionCost, int deletionCost) {
         this.insertionCost = insertionCost;
         this.deletionCost = deletionCost;
-        this.substitutionCost = substitutionCost;
-        this.diagonal = diagonal;
     }
 
     public double calculateDistance(List<Point2D.Double> source, List<Point2D.Double> target) {
@@ -64,13 +60,9 @@ public class LevenshteinDistance {
 
     private double calcSubstitutionCost(List<Point2D.Double> source, List<Point2D.Double> target,
                                         double[][] matrix, int row, int col) {
-        double cost = 0;
-        /*if (source.charAt(row - 1) != target.charAt(col - 1)) {
-            cost = substitutionCost;
-        }*/
         Point2D.Double sourcePoint = source.get(row - 1);
         Point2D.Double targetPoint = target.get(col - 1);
-        cost = sourcePoint.distance(targetPoint);
+        double cost = sourcePoint.distance(targetPoint);
         return matrix[row - 1][col - 1] + cost;
     }
 }

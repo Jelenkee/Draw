@@ -1,7 +1,8 @@
 package com.example.examplemod;
 
 import com.google.common.collect.Iterables;
-import net.minecraft.nbt.CompoundTag;
+import it.unimi.dsi.fastutil.ints.IntDoublePair;
+import net.minecraft.nbt.LongArrayTag;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.apache.commons.lang3.Validate;
 
@@ -10,16 +11,20 @@ import java.awt.*;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
-public class Drawing implements INBTSerializable<CompoundTag> {
+public class Drawing implements INBTSerializable<LongArrayTag> {
 
     private List<Point2D.Double> points = new ArrayList<>();
+
+    public void addPoint(double x, double y) {
+        addPoint(new Point2D.Double(x, y));
+    }
 
     public void addPoint(Point2D.Double point) {
         Point2D.Double last = Iterables.getLast(points, null);
@@ -30,10 +35,6 @@ public class Drawing implements INBTSerializable<CompoundTag> {
 
     private boolean tooClose(Point2D.Double p1, Point2D.Double p2, double distance) {
         return p1.equals(p2) || p1.distanceSq(p2) < distance * distance;
-    }
-
-    public void addPoint(double x, double y) {
-        addPoint(new Point2D.Double(x, y));
     }
 
     public boolean valid() {
@@ -73,9 +74,9 @@ public class Drawing implements INBTSerializable<CompoundTag> {
         BufferedImage image = new BufferedImage(wh + 20, wh + 20, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = (Graphics2D) image.getGraphics();
         graphics.setColor(Color.YELLOW);
-        double minX = Math.abs(getPoints().stream().mapToDouble(Point2D.Double::getX).min().getAsDouble());
-        double minY = Math.abs(getPoints().stream().mapToDouble(Point2D.Double::getY).min().getAsDouble());
-        for (Point2D.Double point : getPoints()) {
+        double minX = Math.abs(points.stream().mapToDouble(Point2D.Double::getX).min().getAsDouble());
+        double minY = Math.abs(points.stream().mapToDouble(Point2D.Double::getY).min().getAsDouble());
+        for (Point2D.Double point : points) {
             graphics.fillRect(
                     (int) ((point.getX() + minX) * wh) - 2 + 10,
                     (int) ((point.getY() + minY) * wh) - 2 + 10,
@@ -91,34 +92,34 @@ public class Drawing implements INBTSerializable<CompoundTag> {
         return baos.toByteArray();
     }
 
-    public double compare(Drawing other) {
+    public double compare(Drawing other, boolean fill) {
         List<Point2D.Double> thisPoints = this.points;
         List<Point2D.Double> otherPoints = other.points;
         int thisLength = thisPoints.size();
         int otherLength = otherPoints.size();
-        int minLength = Math.min(thisLength, otherLength);
-        int diff = Math.abs(thisLength - otherLength);
-        double growthPercentage = Math.max(thisLength / (double) otherLength, otherLength / (double) thisLength);
-        /*if(thisLength>otherLength){
-
-        }else if(thisLength<otherLength){
-
-        }*/
-        //reverse list when comparing
-        //return comparePoints(thisPoints.subList(0, minLength), otherPoints.subList(0, minLength));
-        return comparePoints(thisPoints, otherPoints);
-    }
-
-    private double comparePoints(List<Point2D.Double> l1, List<Point2D.Double> l2) {
-        if (true) return new LevenshteinDistance(2).calculateDistance(l1, l2);
-        Validate.isTrue(l1.size() == l2.size());
-        double res = 1;
-        for (int i = 0; i < l1.size(); i++) {
-            Point2D.Double p1 = l1.get(i);
-            Point2D.Double p2 = l2.get(i);
-            res *= p1.distance(p2);
+        List<Point2D.Double> smallList = thisLength <= otherLength ? thisPoints : otherPoints;
+        List<Point2D.Double> largeList = thisLength > otherLength ? thisPoints : otherPoints;
+        while (fill && largeList.size() > smallList.size()) {
+            int diff = largeList.size() - smallList.size();
+            List<IntDoublePair> distances = new ArrayList<>();
+            smallList = new ArrayList<>(smallList);
+            for (int i = 0; i < smallList.size() - 1; i++) {
+                distances.add(IntDoublePair.of(i, smallList.get(i).distanceSq(smallList.get(i + 1))));
+            }
+            distances = distances.stream()
+                    .sorted(Comparator.comparingDouble(IntDoublePair::rightDouble).reversed())
+                    .limit(diff)
+                    .sorted(Comparator.comparingInt(IntDoublePair::leftInt).reversed())
+                    .collect(Collectors.toList());
+            smallList = new LinkedList<>(smallList);
+            for (IntDoublePair distance : distances) {
+                Point2D.Double first = smallList.get(distance.leftInt());
+                Point2D.Double second = smallList.get(distance.leftInt() + 1);
+                Point2D.Double newPoint = new Point2D.Double((first.getX() + second.getX()) / 2, (first.getY() + second.getY()) / 2);
+                smallList.add(distance.leftInt() + 1, newPoint);
+            }
         }
-        return res;
+        return new LevenshteinDistance().calculateDistance(smallList, largeList);
     }
 
     public List<Point2D.Double> getPoints() {
@@ -126,13 +127,23 @@ public class Drawing implements INBTSerializable<CompoundTag> {
     }
 
     @Override
-    public CompoundTag serializeNBT() {
-        return new CompoundTag();
+    public LongArrayTag serializeNBT() {
+        return new LongArrayTag(points.stream()
+                .flatMapToLong(p -> LongStream.of(Double.doubleToLongBits(p.getX()), Double.doubleToLongBits(p.getY())))
+                .toArray());
     }
 
     @Override
-    public void deserializeNBT(CompoundTag nbt) {
-
+    public void deserializeNBT(LongArrayTag arrayTag) {
+        if (arrayTag.size() % 2 != 0) {
+            System.out.println("ERROR");
+        } else {
+            points = new ArrayList<>();
+            long[] array = arrayTag.getAsLongArray();
+            for (int i = 0; i < array.length; i += 2) {
+                points.add(new Point2D.Double(Double.longBitsToDouble(array[i]), Double.longBitsToDouble(array[i + 1])));
+            }
+        }
     }
 
     @Override
