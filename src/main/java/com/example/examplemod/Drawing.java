@@ -2,25 +2,30 @@ package com.example.examplemod;
 
 import com.google.common.collect.Iterables;
 import it.unimi.dsi.fastutil.ints.IntDoublePair;
-import net.minecraft.nbt.LongArrayTag;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraftforge.common.util.INBTSerializable;
 import org.apache.commons.lang3.Validate;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-public class Drawing implements INBTSerializable<LongArrayTag> {
+public class Drawing implements INBTSerializable<CompoundTag> {
 
+    private String name;
     private List<Point2D.Double> points = new ArrayList<>();
+    private Image image = null;
+
+    public Drawing() {
+    }
+
+    public Drawing(String name) {
+        this.name = name;
+    }
 
     public void addPoint(double x, double y) {
         addPoint(new Point2D.Double(x, y));
@@ -65,13 +70,13 @@ public class Drawing implements INBTSerializable<LongArrayTag> {
         points = points.stream()
                 .map(p -> new Point2D.Double(p.getX() / wh, p.getY() / wh))
                 .collect(Collectors.toList());
-        createImage();
+        this.image = createImage();
 
     }
 
-    private byte[] createImage() {
+    private Image createImage() {
         final int wh = 120;
-        BufferedImage image = new BufferedImage(wh + 20, wh + 20, BufferedImage.TYPE_INT_RGB);
+        Image image = new BufferedImage(wh + 20, wh + 20, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = (Graphics2D) image.getGraphics();
         graphics.setColor(Color.YELLOW);
         double minX = Math.abs(points.stream().mapToDouble(Point2D.Double::getX).min().getAsDouble());
@@ -82,14 +87,8 @@ public class Drawing implements INBTSerializable<LongArrayTag> {
                     (int) ((point.getY() + minY) * wh) - 2 + 10,
                     4, 4);
         }
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            ImageIO.write(image, "png", baos);
-            //ImageIO.write(image, "png", new File("/home/gaus/Bilder/", "lolcat" + System.currentTimeMillis() + ".png"));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return baos.toByteArray();
+        image = image.getScaledInstance(64, 64, 1);
+        return image;
     }
 
     public double compare(Drawing other, boolean fill) {
@@ -127,21 +126,27 @@ public class Drawing implements INBTSerializable<LongArrayTag> {
     }
 
     @Override
-    public LongArrayTag serializeNBT() {
-        return new LongArrayTag(points.stream()
+    public CompoundTag serializeNBT() {
+        long[] points = this.points.stream()
                 .flatMapToLong(p -> LongStream.of(Double.doubleToLongBits(p.getX()), Double.doubleToLongBits(p.getY())))
-                .toArray());
+                .toArray();
+        CompoundTag tag = new CompoundTag();
+        tag.putString("name", name);
+        tag.putLongArray("points", points);
+        return tag;
+
     }
 
     @Override
-    public void deserializeNBT(LongArrayTag arrayTag) {
-        if (arrayTag.size() % 2 != 0) {
+    public void deserializeNBT(CompoundTag tag) {
+        this.name = tag.getString("name");
+        long[] points = tag.getLongArray("points");
+        if (points.length % 2 != 0) {
             System.out.println("ERROR");
         } else {
-            points = new ArrayList<>();
-            long[] array = arrayTag.getAsLongArray();
-            for (int i = 0; i < array.length; i += 2) {
-                points.add(new Point2D.Double(Double.longBitsToDouble(array[i]), Double.longBitsToDouble(array[i + 1])));
+            this.points = new ArrayList<>();
+            for (int i = 0; i < points.length; i += 2) {
+                this.points.add(new Point2D.Double(Double.longBitsToDouble(points[i]), Double.longBitsToDouble(points[i + 1])));
             }
         }
     }
@@ -157,5 +162,21 @@ public class Drawing implements INBTSerializable<LongArrayTag> {
     @Override
     public int hashCode() {
         return Objects.hash(points);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Image getImage() {
+        return image;
+    }
+
+    public void setImage(Image image) {
+        this.image = image;
     }
 }

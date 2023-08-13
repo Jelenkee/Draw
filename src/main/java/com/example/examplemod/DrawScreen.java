@@ -1,5 +1,6 @@
 package com.example.examplemod;
 
+import com.google.common.collect.Iterables;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.Util;
 import net.minecraft.client.gui.screens.Screen;
@@ -9,11 +10,17 @@ import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
 import java.awt.geom.Point2D;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class DrawScreen extends Screen {
     private Drawing drawing = null;
     private Drawing savedDrawing = null;
     private final boolean createMode;
+
+    private static Map<String, Drawing> map = new HashMap<>();
 
     protected DrawScreen(boolean createMode) {
         super(new TextComponent("toll"));
@@ -64,13 +71,25 @@ public class DrawScreen extends Screen {
                 drawing.finish();
                 if (createMode) {
                     //TODO persist drawing
+                    //TODO check for similar drawing and warn
                 } else {
                     //TODO check for match
+                }
+                String id = Iterables.getLast(minecraft.gui.getChat().getRecentChat());
+                if (id.length() == 1) {
+                    map.put(id, drawing);
+                    System.out.println("saved " + id);
+                } else {
+                    String s = map.entrySet().stream()
+                            .sorted(Comparator.comparing(Map.Entry::getKey))
+                            .map(e -> e.getKey() + ":" + (int) drawing.compare(e.getValue(), true))
+                            .collect(Collectors.joining(" ; "));
+                    getMinecraft().player.sendMessage(new TextComponent(s), Util.NIL_UUID);
                 }
                 if (savedDrawing == null) {
                     savedDrawing = drawing;
                 } else {
-                    getMinecraft().player.sendMessage(new TextComponent((int) drawing.compare(savedDrawing, false) + " ; " + (int) drawing.compare(savedDrawing, true)), Util.NIL_UUID);
+                    //getMinecraft().player.sendMessage(new TextComponent((int) drawing.compare(savedDrawing, false) + " ; " + (int) drawing.compare(savedDrawing, true)), Util.NIL_UUID);
                 }
                 //System.out.println(new GsonBuilder().setPrettyPrinting().create().toJson(drawing));
                 //PacketHandler.INSTANCE.sendToServer(new PacketHandler.M(PacketHandler.M.Action.CREATE_DRAW, "ga", drawing));

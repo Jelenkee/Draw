@@ -1,7 +1,6 @@
 package com.example.examplemod;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -41,7 +40,7 @@ public class PacketHandler {
         public enum Action {
             CREATE_DRAW, DRAW_DRAW;
 
-            private static Action[] array = Action.values();
+            private static final Action[] array = Action.values();
 
             public static Action lookup(int index) {
                 return array[index];
@@ -62,7 +61,7 @@ public class PacketHandler {
         public void handleMessage(ServerPlayer player) {
             Action action = Action.lookup(this.nbt.getInt("action"));
             Drawing drawing = new Drawing();
-            drawing.deserializeNBT((LongArrayTag) this.nbt.get("drawing"));
+            drawing.deserializeNBT((CompoundTag) this.nbt.get("drawing"));
             String name = this.nbt.getString("name");
             System.out.println(System.currentTimeMillis());
         }
